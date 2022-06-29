@@ -9,7 +9,7 @@
         </div>
         
         <div class="textBox">
-            <h1>{{ $store.getters.getUser.name }} 님 반갑습니다.</h1>
+            <h1>{{ $store.getters.getUser.displayName }} 님 반갑습니다.</h1>
             <p>&emsp;내가 쓴 댓글</p>
             <p>&emsp;좋아요 한 갯수 {{ $store.getters.getLiked.length }}</p>
             <span @click="$router.push('/calendar').catch(() => {})">&emsp;캘린더</span> |
@@ -25,7 +25,7 @@ export default {
     methods: {
         handleFile(e) {
             if(e.target.files[0]) {
-                this.$store.dispatch('updatePhotoURL', URL.createObjectURL(e.target.files[0]));
+                this.$store.dispatch('updateProfile', {photoURL: URL.createObjectURL(e.target.files[0])});
             }
         },
         withdrawalUser() {

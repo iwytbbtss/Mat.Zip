@@ -16,7 +16,7 @@ import {
   reauthenticateWithCredential,
   reauthenticateWithPopup
 } from "firebase/auth";
-import { getDatabase, ref, set, child, get, remove } from "firebase/database";
+import { getDatabase, ref, set, child, get, remove, update, push } from "firebase/database";
 import router from "@/router";
 
 const auth = getAuth();
@@ -31,6 +31,7 @@ export default new Vuex.Store({
   state: {
     places: PlaceData,
     locations: CoordData,
+    comments: [],
     alertData: null,
     showModal: false,
     showSideMenu: false,
@@ -110,8 +111,8 @@ export default new Vuex.Store({
       signInWithEmailAndPassword(auth, payload.userid, payload.userpw)
         .then((userinfo) => {
           commit("setUser", {
-            id: userinfo.user.uid,
-            name: userinfo.user.displayName,
+            uid: userinfo.user.uid,
+            displayName: userinfo.user.displayName,
             photoURL: userinfo.user.photoURL
           });
           commit("setShowModal", false);
@@ -127,8 +128,8 @@ export default new Vuex.Store({
       signInWithPopup(auth, provider)
         .then((userinfo) => {
           commit("setUser", {
-            id: userinfo.user.uid,
-            name: userinfo.user.displayName,
+            uid: userinfo.user.uid,
+            displayName: userinfo.user.displayName,
             photoURL: userinfo.user.photoURL
           });
           commit("setShowModal", false);
@@ -144,12 +145,12 @@ export default new Vuex.Store({
       createUserWithEmailAndPassword(auth, payload.userid, payload.userpw)
         .then((userinfo) => {
           commit("setUser", {
-            id: userinfo.user.uid,
-            name: userinfo.user.displayName,
+            uid: userinfo.user.uid,
+            displayName: userinfo.user.displayName,
           });
           commit("setShowModal", false);
           dispatch("setUserData");
-          dispatch("updatePhotoURL", "https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2016/10/31/e1f20f9b-1ee3-478a-a3a0-ca16ee82b9f8.gif");
+          dispatch("updateProfile", {displayName: "맛집러71", photoURL: "https://talkimg.imbc.com/TVianUpload/tvian/TViews/image/2016/10/31/e1f20f9b-1ee3-478a-a3a0-ca16ee82b9f8.gif"});
           router.push("/");
         })
         .catch((err) => {
@@ -185,7 +186,7 @@ export default new Vuex.Store({
       }
     },
     setUserData({ state, commit }) {
-      get(child(ref(database), "users/" + state.user.id))
+      get(child(ref(database), "users/" + state.user.uid))
         .then((snapshot) => {
           if (snapshot.exists()) {
             commit(
@@ -207,36 +208,34 @@ export default new Vuex.Store({
     },
     addLikeDB({ state, commit }, payload) {
       commit("addLikePlace", payload);
-      set(ref(database, "users/" + state.user.id), {
-        liked: [...state.liked],
-        schedules: [...state.schedules],
-      });
+      set(ref(database, `users/${state.user.uid}/liked/`), [...state.liked]);
     },
     deleteLikeDB({ state, commit }, payload) {
       commit("deleteLikePlace", payload);
-      set(ref(database, "users/" + state.user.id), {
-        liked: [...state.liked],
-        schedules: [...state.schedules],
-      });
+      set(ref(database, `users/${state.user.uid}/liked/`), [...state.liked]);
     },
     addScheduleDB({ state, commit }, payload) {
       commit("addSchedule", payload);
-      set(ref(database, "users/" + state.user.id), {
-        liked: [...state.liked],
-        schedules: [...state.schedules],
-      });
+      set(ref(database, `users/${state.user.uid}/schedules/`), [...state.schedules]);
     },
-    updatePhotoURL({ state, commit }, payload) {
-      updateProfile(auth.currentUser, {
-        photoURL: payload
-      }).then(() => {
-        commit("setUser", { ...state.user, photoURL: payload })
+    updateProfile({ state, commit }, payload) {
+      updateProfile(auth.currentUser, { ...state.user, payload })
+        .then(() => {
+          console.log({ ...state.user, payload });
+          commit("setUser", { ...state.user, payload });
       }).catch((err) => {
         console.error(err);
       });
     },
+    addComment({ state }, payload) {
+      const key = push(child(ref(database), "comments")).key;
+      const comment = {};
+      comment[`users/${state.user.uid}/comments/${key}/`] = payload;
+      comment[`comments/key/`] = payload;
+      update(ref(database), comment);
+    },
     removeUserDB({ state, commit }) {
-      remove(ref(database, "users/" + state.user.id))
+      remove(ref(database, "users/" + state.user.uid))
         .then(() => {
           deleteUser(auth.currentUser)
             .then(() => {
