@@ -10,6 +10,9 @@
     <div class="intro">
       <h1>{{ place.title }}</h1>
       <p style="word-break: keep-all; line-height: 30px; margin-top:25px">{{ place.intro }}</p>
+      <p>{{ $store.getters.getComments.filter((item) => item.placeId==place.id) }}</p>
+      <input type="text" v-model="comment">
+      <button @click="addComment">작성</button>
     </div>
   </div>
 </template>
@@ -32,7 +35,13 @@ export default {
           prevEl: ".swiper-button-prev",
         },
       },
+      comment: ""
     };
+  },
+  methods: {
+    addComment() {
+      this.$store.dispatch("addComment", {id: this.place.id, comment: this.comment});
+    }
   }
 };
 </script>

@@ -16,7 +16,7 @@ import {
   reauthenticateWithCredential,
   reauthenticateWithPopup
 } from "firebase/auth";
-import { getDatabase, ref, set, child, get, remove, update, push } from "firebase/database";
+import { getDatabase, ref, set, child, get, remove, update, push, onValue } from "firebase/database";
 import router from "@/router";
 
 const auth = getAuth();
@@ -31,7 +31,7 @@ export default new Vuex.Store({
   state: {
     places: PlaceData,
     locations: CoordData,
-    comments: [],
+    comments: {},
     alertData: null,
     showModal: false,
     showSideMenu: false,
@@ -68,6 +68,9 @@ export default new Vuex.Store({
     getAlertData(state) {
       return state.alertData;
     },
+    getComments(state) {
+      return state.comments;
+    }
   },
   mutations: {
     setShowModal(state, bool) {
@@ -105,8 +108,17 @@ export default new Vuex.Store({
     setAlertData(state, payload) {
       state.alertData = payload;
     },
+    setComments(state, payload) {
+      state.comments = payload;
+    }
   },
   actions: {
+    loadComments({ state, commit }) {
+      onValue(ref(database, 'comments/'), (snapshot) => {
+        commit("setComments", Object.values(snapshot.val()));
+        console.log(state.comments);
+      })
+    },
     emailLogin({ commit, dispatch }, payload) {
       signInWithEmailAndPassword(auth, payload.userid, payload.userpw)
         .then((userinfo) => {
@@ -227,12 +239,19 @@ export default new Vuex.Store({
         console.error(err);
       });
     },
-    addComment({ state }, payload) {
+    addComment({ state, commit }, payload) {
       const key = push(child(ref(database), "comments")).key;
-      const comment = {};
-      comment[`users/${state.user.uid}/comments/${key}/`] = payload;
-      comment[`comments/key/`] = payload;
-      update(ref(database), comment);
+      const comment = { placeId: payload.id, writer: state.user.displayName, writerId: state.user.uid, comment: payload.comment, date: new Date() };
+      const data = {};
+      data[`users/${state.user.uid}/comments/${key}/`] = comment;
+      data[`comments/${key}/`] = comment;
+      update(ref(database), data)
+        .then(() => {
+          commit("setComments", {});
+        })
+        .catch((err) => {
+          console.error(err);
+        });
     },
     removeUserDB({ state, commit }) {
       remove(ref(database, "users/" + state.user.uid))

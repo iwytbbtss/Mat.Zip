@@ -38,6 +38,9 @@ export default {
       this.$store.commit("setShowSideMenu", false);
     },
   },
+  mounted() {
+    this.$store.dispatch("loadComments");
+  }
 };
 </script>
 
